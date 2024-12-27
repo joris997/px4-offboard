@@ -71,41 +71,41 @@ class PX4Visualizer(Node):
 
         # Configure subscritpions
         qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
-            history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
             depth=1,
         )
 
         self.attitude_sub = self.create_subscription(
             VehicleAttitude,
-            "/fmu/out/vehicle_attitude",
+            "fmu/out/vehicle_attitude",
             self.vehicle_attitude_callback,
             qos_profile,
         )
         self.local_position_sub = self.create_subscription(
             VehicleLocalPosition,
-            "/fmu/out/vehicle_local_position",
+            "fmu/out/vehicle_local_position",
             self.vehicle_local_position_callback,
             qos_profile,
         )
         self.setpoint_sub = self.create_subscription(
             TrajectorySetpoint,
-            "/fmu/in/trajectory_setpoint",
+            "fmu/in/trajectory_setpoint",
             self.trajectory_setpoint_callback,
             qos_profile,
         )
 
         self.vehicle_pose_pub = self.create_publisher(
-            PoseStamped, "/px4_visualizer/vehicle_pose", 10
+            PoseStamped, "px4_visualizer/vehicle_pose", 10
         )
         self.vehicle_vel_pub = self.create_publisher(
-            Marker, "/px4_visualizer/vehicle_velocity", 10
+            Marker, "px4_visualizer/vehicle_velocity", 10
         )
         self.vehicle_path_pub = self.create_publisher(
-            Path, "/px4_visualizer/vehicle_path", 10
+            Path, "px4_visualizer/vehicle_path", 10
         )
         self.setpoint_path_pub = self.create_publisher(
-            Path, "/px4_visualizer/setpoint_path", 10
+            Path, "px4_visualizer/setpoint_path", 10
         )
 
         self.vehicle_attitude = np.array([1.0, 0.0, 0.0, 0.0])
