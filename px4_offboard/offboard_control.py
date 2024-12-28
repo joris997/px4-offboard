@@ -59,11 +59,11 @@ class OffboardControl(Node):
 
         self.status_sub = self.create_subscription(
             VehicleStatus,
-            '/fmu/out/vehicle_status',
+            'fmu/out/vehicle_status',
             self.vehicle_status_callback,
             qos_profile)
-        self.publisher_offboard_mode = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
-        self.publisher_trajectory = self.create_publisher(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', qos_profile)
+        self.publisher_offboard_mode = self.create_publisher(OffboardControlMode, 'fmu/in/offboard_control_mode', qos_profile)
+        self.publisher_trajectory = self.create_publisher(TrajectorySetpoint, 'fmu/in/trajectory_setpoint', qos_profile)
         timer_period = 0.02  # seconds
         self.timer = self.create_timer(timer_period, self.cmdloop_callback)
         self.dt = timer_period
