@@ -135,6 +135,7 @@ class PX4Visualizer(Node):
         self.vehicle_attitude[3] = -msg.q[3]
 
     def vehicle_local_position_callback(self, msg):
+        print("!!! receiving vehicle_local_position message")
         path_clearing_timeout = (
             self.get_parameter("path_clearing_timeout")
             .get_parameter_value()
