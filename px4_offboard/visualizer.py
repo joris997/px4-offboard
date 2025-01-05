@@ -107,6 +107,9 @@ class PX4Visualizer(Node):
         self.setpoint_path_pub = self.create_publisher(
             Path, "px4_visualizer/setpoint_path", 10
         )
+        self.vehicle_radius_pub = self.create_publisher(
+            Marker, "px4_visualizer/vehicle_radius", 10
+        )
 
         self.vehicle_attitude = np.array([1.0, 0.0, 0.0, 0.0])
         self.vehicle_local_position = np.array([0.0, 0.0, 0.0])
@@ -187,6 +190,26 @@ class PX4Visualizer(Node):
         head_point.z = tail[2] + dt * vector[2]
         msg.points = [tail_point, head_point]
         return msg
+    
+    def create_robot_radius_marker(self, id, position, radius):
+        msg = Marker()
+        msg.action = Marker.ADD
+        msg.header.frame_id = "map"
+        # msg.header.stamp = Clock().now().nanoseconds / 1000
+        msg.ns = "robot_radius"
+        msg.id = id
+        msg.type = Marker.CYLINDER
+        msg.scale.x = 2.0 * radius
+        msg.scale.y = 2.0 * radius
+        msg.scale.z = 0.1
+        msg.color.r = 0.0
+        msg.color.g = 0.0
+        msg.color.b = 1.0
+        msg.color.a = 0.2
+        msg.pose.position.x = position[0]
+        msg.pose.position.y = position[1]
+        msg.pose.position.z = position[2]
+        return msg
 
     def append_vehicle_path(self, msg):
         self.vehicle_path_msg.poses.append(msg)
@@ -218,6 +241,11 @@ class PX4Visualizer(Node):
         # Publish arrow markers for velocity
         velocity_msg = self.create_arrow_marker(1, self.vehicle_local_position, self.vehicle_local_velocity)
         self.vehicle_vel_pub.publish(velocity_msg)
+
+        # Create a circle marker with the vehicle radius
+        vehicle_radius_msg = self.create_robot_radius_marker(1, self.vehicle_local_position, 0.2)
+        self.vehicle_radius_pub.publish(vehicle_radius_msg)
+
 
 
 def main(args=None):
