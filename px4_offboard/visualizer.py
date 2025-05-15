@@ -46,6 +46,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from px4_msgs.msg import VehicleAttitude
 from px4_msgs.msg import VehicleLocalPosition
 from px4_msgs.msg import TrajectorySetpoint
+from px4_msgs.msg import VehicleRatesSetpoint
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker
@@ -61,7 +62,7 @@ def vector2PoseMsg(frame_id, position, attitude):
     pose_msg.pose.orientation.z = attitude[3]
     pose_msg.pose.position.x = position[0]
     pose_msg.pose.position.y = position[1]
-    pose_msg.pose.position.z = position[2]
+    pose_msg.pose.position.z = 0*position[2]
     return pose_msg
 
 
@@ -94,6 +95,12 @@ class PX4Visualizer(Node):
             self.trajectory_setpoint_callback,
             qos_profile,
         )
+        self.rate_setpoint_sub = self.create_subscription(
+            VehicleRatesSetpoint,
+            "fmu/in/vehicle_rates_setpoint",
+            self.vehicle_rates_setpoint_callback,
+            qos_profile,
+        )
 
         self.vehicle_pose_pub = self.create_publisher(
             PoseStamped, "px4_visualizer/vehicle_pose", 10
@@ -110,11 +117,15 @@ class PX4Visualizer(Node):
         self.vehicle_radius_pub = self.create_publisher(
             Marker, "px4_visualizer/vehicle_radius", 10
         )
+        self.vehicle_force_pub = self.create_publisher(
+            Marker, "px4_visualizer/vehicle_force", 10
+        )
 
         self.vehicle_attitude = np.array([1.0, 0.0, 0.0, 0.0])
         self.vehicle_local_position = np.array([0.0, 0.0, 0.0])
         self.vehicle_local_velocity = np.array([0.0, 0.0, 0.0])
         self.setpoint_position = np.array([0.0, 0.0, 0.0])
+        self.vehicle_force = np.array([0.0, 0.0, 0.0])
         self.vehicle_path_msg = Path()
         self.setpoint_path_msg = Path()
 
@@ -164,22 +175,30 @@ class PX4Visualizer(Node):
         self.setpoint_position[1] = -msg.position[1]
         self.setpoint_position[2] = -msg.position[2]
 
+    def vehicle_rates_setpoint_callback(self, msg):
+        self.get_logger().info(f"Vehicle force: {msg.thrust_body}")
+        self.vehicle_force[0] = msg.thrust_body[0]
+        self.vehicle_force[1] = msg.thrust_body[1]
+        self.vehicle_force[2] = msg.thrust_body[2]
+
+        # convert from NED body frame to ENU world frame
+
     def create_arrow_marker(self, id, tail, vector):
         msg = Marker()
         msg.action = Marker.ADD
-        msg.header.frame_id = "map"
+        msg.header.frame_id = "world"
         # msg.header.stamp = Clock().now().nanoseconds / 1000
         msg.ns = "arrow"
         msg.id = id
         msg.type = Marker.ARROW
         msg.scale.x = 0.1
-        msg.scale.y = 0.2
+        msg.scale.y = 0.1
         msg.scale.z = 0.0
-        msg.color.r = 0.5
-        msg.color.g = 0.5
+        msg.color.r = 1.0
+        msg.color.g = 0.0
         msg.color.b = 0.0
         msg.color.a = 1.0
-        dt = 0.3
+        dt = 0.5
         tail_point = Point()
         tail_point.x = tail[0]
         tail_point.y = tail[1]
@@ -194,7 +213,7 @@ class PX4Visualizer(Node):
     def create_robot_radius_marker(self, id, position, radius):
         msg = Marker()
         msg.action = Marker.ADD
-        msg.header.frame_id = "map"
+        msg.header.frame_id = "world"
         # msg.header.stamp = Clock().now().nanoseconds / 1000
         msg.ns = "robot_radius"
         msg.id = id
@@ -223,7 +242,7 @@ class PX4Visualizer(Node):
 
     def cmdloop_callback(self):
         vehicle_pose_msg = vector2PoseMsg(
-            "map", self.vehicle_local_position, self.vehicle_attitude
+            "world", self.vehicle_local_position, self.vehicle_attitude
         )
         self.vehicle_pose_pub.publish(vehicle_pose_msg)
 
@@ -233,7 +252,7 @@ class PX4Visualizer(Node):
         self.vehicle_path_pub.publish(self.vehicle_path_msg)
 
         # Publish time history of the vehicle path
-        setpoint_pose_msg = vector2PoseMsg("map", self.setpoint_position, self.vehicle_attitude)
+        setpoint_pose_msg = vector2PoseMsg("world", self.setpoint_position, self.vehicle_attitude)
         self.setpoint_path_msg.header = setpoint_pose_msg.header
         self.append_setpoint_path(setpoint_pose_msg)
         self.setpoint_path_pub.publish(self.setpoint_path_msg)
@@ -245,6 +264,11 @@ class PX4Visualizer(Node):
         # Create a circle marker with the vehicle radius
         vehicle_radius_msg = self.create_robot_radius_marker(1, self.vehicle_local_position, 0.2)
         self.vehicle_radius_pub.publish(vehicle_radius_msg)
+
+        # Create an arrow for the vehicle force
+        # self.get_logger().info(f"Vehicle force: {self.vehicle_force}")
+        force_msg = self.create_arrow_marker(2, self.vehicle_local_position, self.vehicle_force)
+        self.vehicle_force_pub.publish(force_msg)
 
 
 
