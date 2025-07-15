@@ -109,12 +109,12 @@ class PX4Visualizer(Node):
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=10
         )
-        self.start_scenario_sub = self.create_subscription(
-            StampedBool,
-            "impact_stl/compute_plan",
-            self.start_scenario_callback,
-            reliable_qos_profile
-        )
+        # self.start_scenario_sub = self.create_subscription(
+        #     StampedBool,
+        #     "impact_stl/compute_plan",
+        #     self.start_scenario_callback,
+        #     reliable_qos_profile
+        # )
 
         self.vehicle_pose_pub = self.create_publisher(
             PoseStamped, "px4_visualizer/vehicle_pose", 10
@@ -194,16 +194,16 @@ class PX4Visualizer(Node):
         self.vehicle_force[0] = msg.thrust_body[0]
         self.vehicle_force[1] = msg.thrust_body[1]
         self.vehicle_force[2] = msg.thrust_body[2]
-        # convert from NED body frame to ENU world frame
+        # convert from NED body frame to ENU map frame
 
-    def start_scenario_callback(self, msg):
-        last_pose = self.vehicle_path_msg.poses[-1]
-        self.vehicle_path_msg.poses = [last_pose]*self.trail_size
+    # def start_scenario_callback(self, msg):
+    #     last_pose = self.vehicle_path_msg.poses[-1]
+    #     self.vehicle_path_msg.poses = [last_pose]*self.trail_size
 
     def create_arrow_marker(self, id, tail, vector):
         msg = Marker()
         msg.action = Marker.ADD
-        msg.header.frame_id = "world"
+        msg.header.frame_id = "map"
         # msg.header.stamp = Clock().now().nanoseconds / 1000
         msg.ns = "arrow"
         msg.id = id
@@ -230,7 +230,7 @@ class PX4Visualizer(Node):
     def create_robot_radius_marker(self, id, position, radius):
         msg = Marker()
         msg.action = Marker.ADD
-        msg.header.frame_id = "world"
+        msg.header.frame_id = "map"
         # msg.header.stamp = Clock().now().nanoseconds / 1000
         msg.ns = "robot_radius"
         msg.id = id
@@ -259,7 +259,7 @@ class PX4Visualizer(Node):
 
     def cmdloop_callback(self):
         vehicle_pose_msg = vector2PoseMsg(
-            "world", self.vehicle_local_position, self.vehicle_attitude
+            "map", self.vehicle_local_position, self.vehicle_attitude
         )
         self.vehicle_pose_pub.publish(vehicle_pose_msg)
 
@@ -269,22 +269,22 @@ class PX4Visualizer(Node):
         self.vehicle_path_pub.publish(self.vehicle_path_msg)
 
         # Publish time history of the vehicle path
-        setpoint_pose_msg = vector2PoseMsg("world", self.setpoint_position, self.vehicle_attitude)
+        setpoint_pose_msg = vector2PoseMsg("map", self.setpoint_position, self.vehicle_attitude)
         self.setpoint_path_msg.header = setpoint_pose_msg.header
         self.append_setpoint_path(setpoint_pose_msg)
         # self.setpoint_path_pub.publish(self.setpoint_path_msg)
 
         # Publish arrow markers for velocity
-        velocity_msg = self.create_arrow_marker(1, self.vehicle_local_position, self.vehicle_local_velocity)
+        # velocity_msg = self.create_arrow_marker(1, self.vehicle_local_position, self.vehicle_local_velocity)
         # self.vehicle_vel_pub.publish(velocity_msg)
 
         # Create a circle marker with the vehicle radius
-        vehicle_radius_msg = self.create_robot_radius_marker(1, self.vehicle_local_position, 0.2)
+        # vehicle_radius_msg = self.create_robot_radius_marker(1, self.vehicle_local_position, 0.2)
         # self.vehicle_radius_pub.publish(vehicle_radius_msg)
 
         # Create an arrow for the vehicle force
         # self.get_logger().info(f"Vehicle force: {self.vehicle_force}")
-        force_msg = self.create_arrow_marker(2, self.vehicle_local_position, self.vehicle_force)
+        # force_msg = self.create_arrow_marker(2, self.vehicle_local_position, self.vehicle_force)
         # self.vehicle_force_pub.publish(force_msg)
 
 
