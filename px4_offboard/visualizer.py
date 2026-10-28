@@ -53,6 +53,8 @@ class PX4Visualizer(Node):
     def __init__(self):
         super().__init__("visualizer")
 
+        self.model_name = self.declare_parameter('model_name', 'bluerov').value
+
         # QoS profiles
         qos_profile_pub = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -72,12 +74,6 @@ class PX4Visualizer(Node):
             VehicleAttitude,
             "fmu/out/vehicle_attitude",
             self.vehicle_attitude_callback,
-            qos_profile_sub,
-        )
-        self.local_position_sub = self.create_subscription(
-            VehicleLocalPosition,
-            "fmu/out/vehicle_local_position",
-            self.vehicle_local_position_callback,
             qos_profile_sub,
         )
         self.local_position_sub = self.create_subscription(
@@ -145,11 +141,15 @@ class PX4Visualizer(Node):
         return pose_msg
 
     def vehicle_attitude_callback(self, msg):
-        # NED-> ENU transformation
-        # Receives quaternion in NED frame as (qw, qx, qy, qz)
-        q_enu = 1/np.sqrt(2) * np.array([msg.q[0] + msg.q[3], msg.q[1] + msg.q[2], msg.q[1] - msg.q[2], msg.q[0] - msg.q[3]])
-        q_enu /= np.linalg.norm(q_enu)
-        self.vehicle_attitude = q_enu.astype(float)
+        if self.model_name == "atmos":
+            # NED-> ENU transformation
+            # Receives quaternion in NED frame as (qw, qx, qy, qz)
+            q_enu = 1/np.sqrt(2) * np.array([msg.q[0] + msg.q[3], msg.q[1] + msg.q[2], msg.q[1] - msg.q[2], msg.q[0] - msg.q[3]])
+            q_enu /= np.linalg.norm(q_enu)
+            self.vehicle_attitude = q_enu.astype(float)
+        else:
+            self.vehicle_attitude = np.array([msg.q[0], msg.q[1], msg.q[2], msg.q[3]], dtype=float)
+
 
     def vehicle_local_position_callback(self, msg):
         path_clearing_timeout = (
@@ -164,18 +164,28 @@ class PX4Visualizer(Node):
             self.vehicle_path_msg.poses.clear()
         self.last_local_pos_update = Clock().now().nanoseconds / 1e9
 
-        # TODO: handle NED->ENU transformation
-        self.vehicle_local_position[0] = msg.y
-        self.vehicle_local_position[1] = msg.x
-        self.vehicle_local_position[2] = -msg.z
-        self.vehicle_local_velocity[0] = msg.vy
-        self.vehicle_local_velocity[1] = msg.vx
-        self.vehicle_local_velocity[2] = -msg.vz
+        self.get_logger().info("model_name: %s" % self.model_name)
+        # if self.model_name == "atmos":
+        #     # NED-> ENU transformation
+        #     self.vehicle_local_position[0] = msg.y
+        #     self.vehicle_local_position[1] = msg.x
+        #     self.vehicle_local_position[2] = -msg.z
+        #     self.vehicle_local_velocity[0] = msg.vy
+        #     self.vehicle_local_velocity[1] = msg.vx
+        #     self.vehicle_local_velocity[2] = -msg.vz
+        # else:
+        self.vehicle_local_position = np.array([msg.x, msg.y, msg.z], dtype=float)
+        self.vehicle_local_velocity = np.array([msg.vx, msg.vy, msg.vz], dtype=float)
+
 
     def trajectory_setpoint_callback(self, msg):
-        self.setpoint_position[0] = msg.position[1]
-        self.setpoint_position[1] = msg.position[0]
-        self.setpoint_position[2] = -msg.position[2]
+        # if self.model_name == "atmos":
+        #     # NED-> ENU transformation
+        #     self.setpoint_position[0] = msg.position[1]
+        #     self.setpoint_position[1] = msg.position[0]
+        #     self.setpoint_position[2] = -msg.position[2]
+        # else:
+        self.setpoint_position = np.array([msg.position[0], msg.position[1], msg.position[2]], dtype=float)
 
     def create_arrow_marker(self, id, tail, vector):
         msg = Marker()
